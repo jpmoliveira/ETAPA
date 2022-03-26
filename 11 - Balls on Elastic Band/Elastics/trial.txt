@@ -1,2 +1,0 @@
-lambda:1
-dynamic:(l::Float64, phi::Float64)->(l, phi)
