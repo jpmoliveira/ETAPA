@@ -1,6 +1,6 @@
 module Defs
 
-export Ball, Elastic, System
+export Ball, Elastic, System, @ep
 
 struct Ball
     # Postition
@@ -42,6 +42,10 @@ struct System
     # Position
     CM::Vector{Float64}
     θ::Vector{Float64}
+end
+
+macro ep()
+    return :(Vector{Float64}(undef, 100000))
 end
 
 end
