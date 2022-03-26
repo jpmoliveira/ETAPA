@@ -3,16 +3,9 @@ module Defs
 export Ball, Elastic, System, @ep
 
 struct Ball
-    # Postition
-    x::Vector{Float64}
-    y::Vector{Float64}
-
-    # Velocity
-    vx::Vector{Float64}
-    vy::Vector{Float64}
-
-    # Rotation
-    ϕ::Vector{Float64}
+    # State
+    # x, y, vx, vy, ϕ
+    X::Array{Any}
 
     # Parameters
     μ::Float64  # Friction Coefficient
@@ -22,8 +15,8 @@ end
 
 struct Elastic
     # State
-    L::Vector{Float64}
-    ϕ::Vector{Float64}
+    # L, ϕ
+    X::Array{Any}
 
     # Parameters
     L₀::Float64 # Initial Length
@@ -39,9 +32,9 @@ struct System
     ball_2::Ball
     elastic::Elastic
 
-    # Position
-    CM::Vector{Float64}
-    θ::Vector{Float64}
+    # State
+    # CM, θ
+    X::Array{Any}
 end
 
 macro ep()
