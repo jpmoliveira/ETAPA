@@ -1,44 +1,47 @@
 module Defs
 
-export Ball, Elastic, System, @ep
+export Ball, Elastic, Environment, System, @ep
 
 struct Ball
-    # State
-    # x, y, vx, vy, ϕ
-    X::Array{Any}
-
     # Parameters
-    μ::Float64  # Friction Coefficient
-    R::Float64  # Ball Radius
-    m::Float64  # Mass
+    m::Float64  # Ball mass
+    μ::Float64  # Ball friction coefficient
+    R::Float64  # Ball radius
+    I::Float64  # Ball moment of inertia
+    # Cd::Float64 # Ball drag coefficient
+
+    # State Vector
+    X::Array{Any} # (x, y, ̇x, ̇y, ϕ, ̇ϕ)
 end
 
 struct Elastic
-    # State
-    # L, ϕ
-    X::Array{Any}
-
     # Parameters
-    L₀::Float64 # Initial Length
-    m::Float64  # Mass
+    m::Float64            # Elastic mass
+    L₀::Float64           # Elastic natural length
+    dynamic::Function     # Elastic dynamic funtion
+    # dissipation::Function # Elastic dissipation function
 
-    # Elastic Forces and Torques
-    dynamic::Function
+    # State Vector
+    X::Array{Any} # (d, ḋ, φ, ̇φ)
+end
+
+struct Environment
+    # Parameters
+    g::Float64 # Gravity
+    # ρ::Float64 # Air density
 end
 
 struct System
-    # Members
-    ball_1::Ball
-    ball_2::Ball
-    elastic::Elastic
+    # Parameters
+    μ::Float64 # System reduced mass
 
-    # State
-    # CM, θ
-    X::Array{Any}
+    # State Vector
+    X::Array{Any} # (x_CM, y_CM, ̇x_CM, ̇y_CM, θ, ̇θ)
 end
 
-macro ep()
-    return :(Vector{Float64}(undef, 100000))
+# Empty placeholder macro
+macro ep(n)
+    return :(Array{Any}(undef, $n, 100000))
 end
 
 end
