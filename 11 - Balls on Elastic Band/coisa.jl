@@ -1,8 +1,8 @@
-using DifferentialEquations, StaticArrays, LinearAlgebra, BenchmarkTools, Plots
+using DifferentialEquations, StaticArrays, LinearAlgebra, BenchmarkTools, Plots, DataFrames, CSV
 
 function Fel(l, phi)
-    k = 1
-    return k * (l - 3)
+    k = 7.5
+    return k * (l - 0.06)
 end
 
 function Tel(l, phi)
@@ -11,31 +11,30 @@ function Tel(l, phi)
 end
 
 function eq_motion_same(u, p, t)
-    _, _, θ, l, ϕ, rx_dot, ry_dot, θ_dot, l_dot, ϕ_dot = u
+    θ, l, ϕ, θ_dot, l_dot, ϕ_dot = u
     m, R, I, μ, g = p
 
-    drx = rx_dot; dry = ry_dot
     dθ = θ_dot; dl = l_dot; dϕ = ϕ_dot
 
-    d = sqrt(l ^ 2)
-    fel = Fel(d - 2 * R, 2 * ϕ)
-    adjusted_fel = -fel * l / d
-    tel = Tel(d - ΣR, 2 * ϕ)
+    fel = Fel(l - 2 * R, 2 * ϕ)
+    tel = -Tel(l - 2 * R, 2 * ϕ)
 
     N = m * g
-    ∂γ = θ_dot / 2 - R * ϕ_dot / d
+    ∂γ = θ_dot / 2 - R * ϕ_dot / l
     vd = sqrt((l_dot / 2) ^ 2 + (∂γ * l) ^ 2)
-    Fat_mod = μ * N / vd
-    Fat_x = -Fat_mod * (l_dot / 2 * cos(θ) - ∂γ * l * sin(θ))
-    Fat_y = -Fat_mod * (l_dot / 2 * sin(θ) - ∂γ * l * cos(θ))
+    if vd != 0
+        Fat_mod = μ * N / vd
+        Fat_x = -Fat_mod * (l_dot / 2 * cos(θ) - ∂γ * l * sin(θ))
+        Fat_y = -Fat_mod * (l_dot / 2 * sin(θ) + ∂γ * l * cos(θ))
+    else
+        Fat_x = Fat_y = 0
+    end
 
-    drx_dot = 0; dry_dot = 0
-    dθ_dot = ((adjusted_fel * sin(θ) + Fat_y) * cos(θ) - (adjusted_fel * cos(θ) + Fat_x) * sin(θ) - 2 * l_dot * θ_dot) / l
-    dl_dot = 2 * ((adjusted_fel * cos(θ) + Fat_x) * cos(θ) + (adjusted_fel * sin(θ) + Fat_y) * sin(θ) + l * dθ ^ 2)
-    dϕ_dot = ϕ_dot * (l_dot * (-l_dot/ (d^2 * l)) + θ_dot * tan(θ)) + (tel - fel * R * tan(θ) + μ * d ^ 2 * (
-              (dl_dot - l * θ_dot ^ 2) * 2 * R / m * tan(θ) -  (l * dθ_dot + 2 * l_dot * θ_dot) * 2 * R / m * tan(θ)) / l) / I
+    dθ_dot = (2 * (-Fat_x * sin(θ) + Fat_y * cos(θ)) / m - 2 * l_dot * θ_dot) / l
+    dl_dot = 2 * (Fat_x * cos(θ) + Fat_y * sin(θ) - fel) / m + l * θ_dot ^ 2
+    dϕ_dot = (tel + R * ∂γ * l) / I
 
-    SA[drx, dry, dθ, dl, dϕ, drx_dot, dry_dot, dθ_dot, dl_dot, dϕ_dot]
+    SA[dθ, dl, dϕ, dθ_dot, dl_dot, dϕ_dot]
 end
 
 function eq_motion_dif(u, p, t)
@@ -76,9 +75,10 @@ function eq_motion_dif(u, p, t)
     drx_dot = (Fat1_x + Fat2_x) / M; dry_dot = (Fat1_y + Fat2_y) / M
     dθ_dot = (((m₁ * drx_dot - Fat1_x) * sin(θ) + (Fat1_y - m₁ * dry_dot) * cos(θ)) / μ- 2 * l_dot * θ_dot) / l
     dl_dot = ((Fat1_x - m₁ * drx_dot) * cos(θ) + (Fat1_y - m₁ * dry_dot) * sin(θ) - adjusted_fel) / μ + l * θ_dot ^ 2
-    dϕ₁_dot = ϕ₁_dot * (l_dot * (-(ΔR^2 * l_dot)/ (d^2 * l)) + θ_dot * tan(θ)) + (tel - fel * R₁ * tan(θ) - (m₁ * d * R₁ * drx_dot / cos(θ) - μ * d ^ 2 * (
-              (dl_dot - l * θ_dot ^ 2) * (R₁ * (tan(θ) / m₁ + 1 / m₂) + R₂ / m₁ * (tan(θ) - 1)) -  (l * dθ_dot + 2 * l_dot * θ_dot) * (R₁ * (tan(θ) / m₂ - 1 / m₁) +
-              R₂ / m₁ * (tan(θ) + 1)))) / l) / I₁
+    dϕ₁_dot = ((m₁ * (l_dot * cos(θ) - rx_dot) - μ_m2 * m₁ * l * θ_dot * sin(θ)) * ry_dot + (m₁ * (ry_dot - l_dot * sin(θ))
+              - μ_m2 * m₁ * l * θ_dot * cos(θ)) * rx_dot - (m₁ * rx + μ * l * cos(θ)) * dry_dot + (m₁ * ry + μ * l * sin(θ))
+              * drx_dot + ((dl_dot - l * θ_dot ^ 2) * (ry * cos(θ) - rx * sin(θ)) - (2 * l_dot * θ_dot + l * dθ_dot) *
+              (ry * sin(θ) + rx * cos(θ))) * m₁ - 2 * μ_m1 * l * l_dot * θ_dot - μ * μ_m1 * l ^ 2 * dθ_dot) * d / (I₁ * ΔR)
     dϕ₂_dot = I₁ / I₂ * dϕ₁_dot - μ * ΔR / I₂ * d * dθ_dot + (ϕ₂_dot - I₁ * ϕ₁_dot / I₂) * l * l_dot / d ^ 2 + d / (I₂ * ΔR) * (2 * μ * l * l_dot * θ_dot + (μ *
               d ^ 2 + I₁ + I₂) * dθ_dot + Fat1_x * (ry + μ_m1 * l * cos(θ)) - Fat1_y * (rx - μ_m1 * l * cos(θ)) + Fat2_x * (ry + μ_m2 * l * sin(θ)) - Fat2_y *
               (rx + μ_m2 * l * cos(θ)))
@@ -95,15 +95,41 @@ function build_p(m::Float64, R::Float64, μ::Float64)
     return [m, R, (2 / 5) * m * R ^ 2, μ, 9.8]
 end
 
-p = build_p(1., 2., 1., 2., 1., 1.)
-u0 = [0., 0., 0., 4., 100., 100., 0, 0, 0, 0, 0, 0]
+p = build_p(0.06, 0.02549, 0.3)
 tspan = (0., 100.)
 ode_problem = ODEProblem{Any}
 if length(p) == 15
+    u0 = [0., 0., 0., 4., 100., 100., 0, 0, 0, 0, 0, 0]
+    m₁, m₂, μ, μ_m1, μ_m2, M, R₁, R₂, ΔR, ΣR, I₁, I₂, μ₁, μ₂, g = p
     ode_problem = ODEProblem(eq_motion_dif, u0, tspan, p)
 elseif length(p) == 5
+    u0 = [0., .10, 50., 0., 0., 0.]
+    m, R, I, μ, g = p
     ode_problem = ODEProblem(eq_motion_same, u0, tspan, p)
 end
 
 sol = solve(ode_problem)
-plot(sol,tspan=(0.,0.5))
+data = DataFrame(sol)
+try
+    rename!(data, [:timestamp, :value1, :value2, :value3, :value4, :value5, :value6,
+                   :value7, :value8, :value9, :value10, :value11, :value12] .=> [:t,
+                   :rx, :ry, :θ, :l, :ϕ₁, :ϕ₂, :rx_dot, :ry_dot, :θ_dot, :l_dot, :ϕ₁_dot,
+                   :ϕ₂_dot])
+    data.∂γ₁ = μ_m1 * data.θ_dot - R₁ * data.ϕ₁_dot ./ sqrt.(data.l .^ 2 .+ ΔR ^2)
+    data.∂γ₂ = μ_m2 * data.θ_dot - R₂ * data.ϕ₂_dot ./ sqrt.(data.l .^ 2 .+ ΔR ^2)
+    data.rx1star = μ_m1 * data.l .* cos.(data.θ)
+    data.rx1 = data.rx + μ_m1 * data.rx1star
+    data.ry1star = μ_m1 * data.l .* sin.(data.θ)
+    data.ry1 = data.ry + data.ry1star
+    data.rx2star = -μ_m2 * data.l .* cos.(data.θ)
+    data.rx2 = data.rx + data.rx2star
+    data.ry2star = -μ_m2 * data.l .* sin.(data.θ)
+    data.ry2 = data.ry + data.ry2star
+catch
+    rename!(data, [:timestamp, :value1, :value2, :value3, :value4, :value5, :value6]
+                   .=> [:t, :θ, :l, :ϕ, :θ_dot, :l_dot, :ϕ_dot])
+    data.∂γ = data.θ_dot ./ 2 - R * data.ϕ_dot ./ data.l
+    data.rx1 = -data.l .* cos.(data.θ)
+    data.ry1 = -data.l .* sin.(data.θ)
+    data.rx2 = -data.rx1; data.ry2 = -data.ry1
+end
