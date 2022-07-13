@@ -1,8 +1,10 @@
-using Plots, XLSX
-include("coisa.jl")
+using DifferentialEquations, StaticArrays, LinearAlgebra, DataFrames, CSV, Interpolations, Plots, XLSX
 
-# p_same = build_p(0.06, 0.02549, 0.3, 7.5, 0.00001)
-# u0_same = [0., .1, 50., 0., 0., 0.]
+include("symmetric.jl")
+# include("asymmetric.jl")
+
+p_same = [0.06, 0.06, 0.02549, 0.3, 7.5, 0.00001]
+u0_same = [0., .1, 50., 0., 0., 0.]
 
 # μ_range = 0.1:0.01:0.5
 # I_range = 0.000001:0.000001:0.00004
@@ -44,7 +46,7 @@ include("coisa.jl")
 # CSV.write("dados/txkappa.csv", df_K)
 # CSV.write("dados/txphi0.csv", df_ϕ₀)
 
-data = full_solution(build_p(0.6, 0.02549, 0.3, 7.5, 0.000005),[0., .1, 50., 0., 0., 0.])
+# data = full_solution(build_p(0.6, 0.02549, 0.3, 7.5, 0.000005),[0., .1, 50., 0., 0., 0.])
 
 # plt1 = plot(μ_range, times_μ, legend = false)
 # plt2 = plot(I_range, times_I, legend = false)
